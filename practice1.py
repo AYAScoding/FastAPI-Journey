@@ -13,8 +13,6 @@
 # ============================================================
 
 
-# TODO: Import the FastAPI class from the fastapi module
+from fastapi import FastAPI
 
-
-# TODO: Initialize a FastAPI app instance and assign it to a
-#       variable named after yourself (e.g. ahmed = FastAPI())
+ayas = FastAPI()
