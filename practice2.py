@@ -14,18 +14,13 @@
 
 
 # TODO: Import the FastAPI class from the fastapi module
-
-# TODO: Import uvicorn
-
-
-# TODO: Initialize a FastAPI app instance
+from fastapi import FastAPI
+import uvicorn
 
 
-# TODO: Complete the __main__ block below to run the app
+
+app = FastAPI()
 if __name__ == "__main__":
-    pass  # Remove this line when you write your solution
+   uvicorn.run(app, host="127.0.0.1", port=8081)
 
-    # TODO: Call uvicorn.run() with:
-    #       - app  → your FastAPI instance
-    #       - host → "127.0.0.1"
-    #       - port → 8080
+   
