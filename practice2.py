@@ -16,21 +16,25 @@ books = [
 # - title (str)
 # - author (str)
 # - year (int)
+class Book(BaseModel):
+    title: str
+    author: str
+    year: int
 
 
 # POST endpoint to add a new book receiving Book model
 @app.post("/books/")
-async def add_book(book:_________):
+async def add_book(book:Book):
     # Generating new id
     book_id = max(b["id"] for b in books) + 1 if books else 1
     # TODO: Modify the code to create new_book
     new_book = {
         "id": book_id,
-        "title": ____________,
-        "author": ____________,
-        "year": ____________
+        "title": book.title,
+        "author": book.author,
+        "year": book.year
     }
     # Adding new book to database
-    books._________(new_book)
+    books.append(new_book)
     # Returning message and new book details
     return {"message": "Book added successfully", "details": new_book}
