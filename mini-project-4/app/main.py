@@ -49,3 +49,29 @@ async def delete_poll(poll_id: str):
         return {"message": "Poll deleted"}
     raise HTTPException(status_code=404, detail="Poll not found")
 
+# --- WEBSOCKET ENDPOINT ---
+
+@app.websocket("/ws/polls/{poll_id}")
+async def websocket_endpoint(websocket: WebSocket, poll_id: str):
+    if poll_id not in polls:
+        await websocket.close(code=1008)
+        return
+
+    await manager.connect(poll_id, websocket)
+    try:
+        while True:
+            # Receive data from a client
+            data = await websocket.receive_json()
+            option = data.get("option")
+
+            if option in polls[poll_id]["options"]:
+                polls[poll_id]["options"][option] += 1
+                
+                # Broadcast the NEW state to ALL clients watching this poll
+                await manager.broadcast(poll_id, {
+                    "event": "update",
+                    "poll_id": poll_id,
+                    "options": polls[poll_id]["options"]
+                })
+    except WebSocketDisconnect:
+        manager.disconnect(poll_id, websocket)
