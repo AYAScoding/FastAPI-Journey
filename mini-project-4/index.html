@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Polling App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            min-height: 100vh; 
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            padding: 20px; 
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 2.5rem; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2); 
+            width: 100%; 
+            max-width: 450px; 
+            backdrop-filter: blur(10px);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 { font-size: 1rem; color: #888; font-weight: 500; }
+        
+        #poll-question { 
+            font-size: 1.6rem; 
+            color: #1a1a1a; 
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #f0f0f0;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+
+        .connected .status-dot {
+            background-color: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+            animation: pulse 2s infinite;
+        }
+        
+        .connected { background: #dcfce7; color: #166534; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .vote-btn { 
+            position: relative;
+            display: block; 
+            width: 100%; 
+            padding: 16px; 
+            margin: 12px 0; 
+            border: 2px solid #edf2f7; 
+            border-radius: 12px; 
+            background: #fff;
+            cursor: pointer; 
+            font-size: 1.1rem; 
+            font-family: inherit;
+            transition: transform 0.1s, border-color 0.2s;
+            overflow: hidden;
+        }
+
+        .vote-btn:hover { border-color: #a78bfa; transform: translateY(-2px); }
+        .vote-btn:active { transform: translateY(1px); }
+
+        .btn-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: #ede9fe;
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+        }
+
+        .btn-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            color: #4c1d95;
+        }
+
+        .vote-stats {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vote-count { font-weight: 600; font-size: 1.2rem; }
+        .vote-percent { font-size: 0.9rem; color: #8b5cf6; width: 40px; text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header-row">
+            <h1>Poll ID: <span id="poll-id-display">...</span></h1>
+            <div id="status-box" class="status-container">
+                <div class="status-dot"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </div>
+        <h2 id="poll-question">Waiting for poll data...</h2>
+        <div id="options-container"></div>
+    </div>
+
+    <script>
+        // Update this to match your current active Poll ID
+        const pollId = "1"; 
+        document.getElementById('poll-id-display').innerText = pollId;
+        
+        const ws = new WebSocket(`ws://localhost:8000/ws/polls/${pollId}`);
+        const statusBox = document.getElementById('status-box');
+        const statusText = document.getElementById('status-text');
+
+        ws.onopen = () => {
+            statusBox.classList.add('connected');
+            statusText.innerText = "Live";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.question) {
+                document.getElementById('poll-question').innerText = data.question;
+            }
+            
+            renderOptions(data.options);
+        };
+
+        ws.onclose = () => {
+            statusBox.classList.remove('connected');
+            statusBox.style.background = '#fee2e2';
+            statusBox.style.color = '#991b1b';
+            statusText.innerText = "Disconnected";
+            document.querySelector('.status-dot').style.backgroundColor = '#ef4444';
+        };
+
+        function renderOptions(options) {
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            // Calculate total votes for percentages
+            const totalVotes = Object.values(options).reduce((sum, current) => sum + current, 0);
+            
+            for (const [name, votes] of Object.entries(options)) {
+                // Calculate percentage (handle divide by zero)
+                const percent = totalVotes === 0 ? 0 : Math.round((votes / totalVotes) * 100);
+
+                const btn = document.createElement('button');
+                btn.className = 'vote-btn';
+                btn.innerHTML = `
+                    <div class="btn-fill" style="width: ${percent}%"></div>
+                    <div class="btn-content">
+                        <span>${name}</span>
+                        <div class="vote-stats">
+                            <span class="vote-count">${votes}</span>
+                            <span class="vote-percent">${percent}%</span>
+                        </div>
+                    </div>
+                `;
+                
+                btn.onclick = () => {
+                    ws.send(JSON.stringify({ "option": name }));
+                };
+                
+                container.appendChild(btn);
+            }
+        }
+    </script>
+</body>
+</html>
